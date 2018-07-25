@@ -2,8 +2,6 @@ import tensorflow as tf
 import numpy as np
 import json
 
-from yolov2.utils import parse_config
-
 
 def _get_weights_from_bytes(weights_file, layer_block, prev_layer_plane):
     byte_count = 0
@@ -104,7 +102,7 @@ def _conv(inp_tensor, scope, conv_layer_block, conv_block_weights_ini=None):
                 out_tensor = tf.layers.batch_normalization(out_tensor,
                                                            gamma_initializer=tf.constant_initializer(
                                                                conv_block_weights_ini['batch_normalization']['gamma']),
-                                                           # beta_initializer=tf.constant_initializer(conv_block_weights_ini['batch_normalization']['beta']),
+                                                           # beta_initializer=tf.constant_initializer(np.zeros(filters)),
                                                            moving_mean_initializer=tf.constant_initializer(
                                                                conv_block_weights_ini['batch_normalization'][
                                                                    'moving_mean']),
@@ -116,10 +114,20 @@ def _conv(inp_tensor, scope, conv_layer_block, conv_block_weights_ini=None):
                                    filter_ini=tf.constant_initializer(conv_block_weights_ini['convolutional_bias']))
                 out_tensor = tf.nn.bias_add(out_tensor, bias)
         else:
-
-            out_tensor = _build_conv(inp_tensor, pad_val, filter_size, filters, stride)
-            bias = _build_bias(filters)
-            out_tensor = tf.nn.bias_add(out_tensor, bias)
+            if conv_block_weights_ini is None:
+                out_tensor = _build_conv(inp_tensor, pad_val, filter_size, filters, stride)
+                bias = _build_bias(filters)
+                out_tensor = tf.nn.bias_add(out_tensor, bias)
+            else:
+                out_tensor = _build_conv(inp_tensor,
+                                         pad_val,
+                                         filter_size,
+                                         filters,
+                                         stride,
+                                         filter_ini=tf.constant_initializer(conv_block_weights_ini['convolutional']))
+                bias = _build_bias(filters,
+                                   filter_ini=tf.constant_initializer(conv_block_weights_ini['convolutional_bias']))
+                out_tensor = tf.nn.bias_add(out_tensor, bias)
         if activate == 'leaky':
             out_tensor = tf.nn.leaky_relu(out_tensor, alpha=0.1)
     return out_tensor
@@ -156,7 +164,7 @@ def _route(tensor_out_list, route_block):
 
 
 class YoloV2:
-    def __init__(self, config_path, weights_path=None, byte_file_start=None, speak_net=False):
+    def __init__(self, net_config, weights_path=None, byte_file_start=None, speak_net=False):
         # currently only process .weights file
         self.weights_path = weights_path
         self.weights_file = None
@@ -173,7 +181,7 @@ class YoloV2:
                 if byte_file_start != 0:
                     self.weights_file.read(byte_file_start)
 
-        self.config = parse_config.parse_cfg(config_path)
+        self.net_config = net_config
         self.out_tensor_list = []
 
     def inference(self, input_tensor):
@@ -182,7 +190,7 @@ class YoloV2:
         byte_count = 0
         if self.weights_file is not None:
             byte_count = self.byte_count
-        for key, layer_block_values in self.config.items():
+        for key, layer_block_values in self.net_config.items():
             # key = layer_block.keys()[0]
             # layer_block = {key: layer_block_values}
             if 'input' == key:
@@ -222,7 +230,7 @@ class YoloV2:
         return out_tensor
 
     def _print_net(self, key, out_size):
-        sentence = key + ': ' + json.dumps(self.config[key])
+        sentence = key + ': ' + json.dumps(self.net_config[key])
         out_size[0] = '?'
         sentence += ' out size: ' + json.dumps(out_size)
         print(sentence)
