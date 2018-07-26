@@ -3,16 +3,32 @@ import numpy as np
 import tensorflow as tf
 
 
-def image_preproc(image, out_size):
+def image_preproc(image_list, out_size):
     """
     :param image: ndarray BGR order
     :param out_size: tuple input size for net
     :return:
     """
-    im = cv2.resize(image, out_size)
-    im = im / 255
-    im = im[:, :, ::-1]
-    return im
+    im_size_list = list()
+    im_list = list()
+    for image in image_list:
+        if image is None:
+            continue
+        im_size_list.append((image.shape[0], image.shape[1]))
+        im = cv2.resize(image, out_size)
+        im = im / 255
+        im = im[:, :, ::-1]
+        im_list.append(im)
+
+    return np.asarray(im_list), im_size_list
+
+
+def get_rect(boxes, image_size_list):
+    # height, width = float(original_image_size[0]), float(original_image_size[1])
+    # im_dims = tf.stack([height, width, height, width], axis=0)
+    # im_dims = tf.reshape(im_dims, [1, 4])
+    # boxes = boxes * im_dims
+    return
 
 
 def _process_box(boxes, origin_image_size):
@@ -123,7 +139,7 @@ class BBoxRegression:
                 labels_true_boxes[i, j, best_anchor, class_ind] = 1
         return matching_true_boxes, detectors_mask, labels_true_boxes
 
-    def get_bbox(self, output, original_image_size):
+    def get_bbox(self, output):
         """
         :param output: tensor
         output from net [?, input_w/32, input_h/32, n_box*(objectness + coord + n_classes)]
@@ -157,12 +173,8 @@ class BBoxRegression:
         box_xy = (box_xy + conv_index) / conv_dims
         box_wh = box_wh * anchors_tensor / conv_dims
 
-        boxes, scores, classes = self._post_proc(box_xy, box_wh, box_confidence, box_class_probs)
-        height, width = float(original_image_size[0]), float(original_image_size[1])
-        im_dims = tf.stack([height, width, height, width], axis=0)
-        im_dims = tf.reshape(im_dims, [1, 4])
-        boxes = boxes * im_dims
-        return boxes, scores, classes
+        boxes, scores, classes, pred_mask = self._post_proc(box_xy, box_wh, box_confidence, box_class_probs)
+        return boxes, scores, classes, pred_mask
 
     def _post_proc(self, box_xy, box_wh, box_confidence, box_class_probs):
         box_mins = box_xy - (box_wh / 2.)
@@ -175,8 +187,10 @@ class BBoxRegression:
         box_class_scores = tf.reduce_max(boxes_scores, axis=-1)
         pred_mask = box_class_scores >= self.thresh
 
+        # pred_mask_tile = tf.expand_dims(pred_mask, 4)
+        # pred_mask_tile = tf.tile(pred_mask_tile, [1, 1, 1, 1, 4])
         boxes = tf.boolean_mask(boxes, pred_mask)
         scores = tf.boolean_mask(box_class_scores, pred_mask)
         classes = tf.boolean_mask(box_classes, pred_mask)
 
-        return boxes, scores, classes
+        return boxes, scores, classes, pred_mask

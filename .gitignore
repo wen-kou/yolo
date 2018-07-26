@@ -44,3 +44,7 @@ __pycache__
 results/*
 
 *.weights
+build/
+dist/
+yolo9000_tf.egg-info/
+*.pyc

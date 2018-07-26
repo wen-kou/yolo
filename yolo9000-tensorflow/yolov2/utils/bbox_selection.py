@@ -63,3 +63,24 @@ def _nms(boxes, thresh=0.5):
         indices = np.delete(indices, suppression)
 
     return pick
+
+
+def get_rect(boxes, scores, classes, pred_mask, image_size_list):
+    assert len(image_size_list) == len(pred_mask), 'size predict mask must be equal to that of image list'
+    start = 0
+    res = list()
+    for i, image_size in enumerate(image_size_list):
+        mask = pred_mask[i]
+        res_len = len(np.where(mask == True)[0])
+        image_size_tile = [image_size[0], image_size[1], image_size[0], image_size[1]]
+        tmp_boxes = boxes[start: start + res_len] * image_size_tile
+        tmp_boxes = np.array(tmp_boxes, dtype=int)
+        tmp_scores = scores[start: start + res_len]
+        tmp_clzz = classes[start: start + res_len]
+        res.append([tmp_boxes, tmp_scores, tmp_clzz])
+
+        start = start + res_len
+
+    return res
+
+

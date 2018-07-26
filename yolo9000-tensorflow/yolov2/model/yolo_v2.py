@@ -165,7 +165,10 @@ def _route(tensor_out_list, route_block):
 
 class YoloV2:
     def __init__(self, net_config, weights_path=None, byte_file_start=None, speak_net=False):
-        # currently only process .weights file
+        # the real weights of self trained model usually starts from 20 bytes; if model is provided by author,
+        # it starts from 16 bytes
+        # TODO: currently only process .weights file , .ckpt will added in the future.
+
         self.weights_path = weights_path
         self.weights_file = None
         self.speak_net = speak_net
@@ -224,7 +227,7 @@ class YoloV2:
             remaining_bytes = len(self.weights_file.read())
             if remaining_bytes != 0:
                 total_bytes = remaining_bytes + byte_count
-                raise ValueError('File error found % but use %' % total_bytes % byte_count)
+                raise ValueError('File error found  %i but use %i ' % (total_bytes, byte_count))
             self.weights_file.close()
 
         return out_tensor
