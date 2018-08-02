@@ -1,6 +1,15 @@
 import numpy as np
 
 
+def select_best_bounding_box_batch(output_list, max_num=4):
+    res = list()
+    for output in output_list:
+        output.append(max_num)
+        res.append(select_best_bounding_box(*output))
+
+    return res
+
+
 def select_best_bounding_box(boxes, scores, classes, max_num=4):
     classes_unique = np.unique(classes)
     boxes_res = []
@@ -23,7 +32,13 @@ def select_best_bounding_box(boxes, scores, classes, max_num=4):
         scores_res.extend(tmp_scores[picked])
         classes_res.extend([clz for i in range(len(picked))])
 
-    return np.array(boxes_res, dtype=int), np.array(scores_res), np.array(classes_res)
+    if len(scores_res) > max_num:
+        ind = np.argsort(scores_res)[::-1][:max_num]
+        boxes_res = np.array(boxes_res)[ind]
+        scores_res = np.array(scores_res)[ind]
+        classes_res = np.array(classes_res)[ind]
+
+    return np.array(boxes_res, dtype=int), np.array(scores_res, dtype=float), np.array(classes_res, dtype=int)
 
 
 def _nms(boxes, thresh=0.5):

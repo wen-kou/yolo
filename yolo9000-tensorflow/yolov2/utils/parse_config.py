@@ -28,7 +28,7 @@ def parse_cfg(config_path):
     config_parser = configparser.ConfigParser()
     unique_config_file = _unique_config_sections(config_path)
     config_parser.read_file(unique_config_file)
-    net_config = dict()
+    net_config = tuple()
     bbox_config = dict()
     out_size_list = list()
     for section in config_parser.sections():
@@ -43,7 +43,7 @@ def parse_cfg(config_path):
             }
             out_size_list.append((int(height), int(width)))
             bbox_config.update({'input_size': (int(height), int(width))})
-            net_config.update({'input': tmp_dict})
+            net_config = net_config + ({'input': tmp_dict}, )
         elif section.startswith('convolutional'):
             filters = int(config_parser[section]['filters'])
             size = int(config_parser[section]['size'])
@@ -65,7 +65,7 @@ def parse_cfg(config_path):
                 'activation': activation,
                 'batch_normalize': batch_normalize
             }
-            net_config.update({section: tmp_dict})
+            net_config = net_config + ({section: tmp_dict}, )
         elif section.startswith('maxpool'):
             size = int(config_parser[section]['size'])
             stride = int(config_parser[section]['stride'])
@@ -74,7 +74,7 @@ def parse_cfg(config_path):
             out_size = ((out_size_list[-1][0] - size) / stride + 1,
                         (out_size_list[-1][1] - size) / stride + 1)
             out_size_list.append(out_size)
-            net_config.update({section: tmp_dict})
+            net_config = net_config + ({section: tmp_dict}, )
         elif section.startswith('route'):
             ids = [int(i) for i in config_parser[section]['layers'].split(',')]
             # layers = [config_parser[i] for i in ids]
@@ -89,7 +89,7 @@ def parse_cfg(config_path):
             if len(tmp) > 1:
                 raise ValueError('layer %  can not be concatenated' % ids)
             out_size_list.append(tmp[0])
-            net_config.update({section: tmp_dict})
+            net_config = net_config + ({section: tmp_dict}, )
         elif section.startswith('reorg'):
             block_size = int(config_parser[section]['stride'])
             tmp_dict = {'stride': block_size}
@@ -98,7 +98,7 @@ def parse_cfg(config_path):
             out_size = (out_size_list[-1][0] / block_size,
                         out_size_list[-1][1] / block_size)
             out_size_list.append(out_size)
-            net_config.update({section: tmp_dict})
+            net_config = net_config + ({section: tmp_dict}, )
         elif section.startswith('region'):
             anchors = config_parser[section]['anchors'].split(',')
             tmp = []

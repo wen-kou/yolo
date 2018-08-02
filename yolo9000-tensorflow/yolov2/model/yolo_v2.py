@@ -193,9 +193,9 @@ class YoloV2:
         byte_count = 0
         if self.weights_file is not None:
             byte_count = self.byte_count
-        for key, layer_block_values in self.net_config.items():
-            # key = layer_block.keys()[0]
-            # layer_block = {key: layer_block_values}
+        for item in self.net_config:
+            key = list(item.keys())[0]
+            layer_block_values = item[key]
             if 'input' == key:
                 prev_layer_size.append(layer_block_values['channels'])
                 continue
@@ -219,8 +219,8 @@ class YoloV2:
             else:
                 raise ValueError('No such layer')
             input_tensor = out_tensor
-            if self.speak_net:
-                self._print_net(key, out_tensor.get_shape().as_list())
+
+            self._print_net(item, out_tensor.get_shape().as_list())
             self.out_tensor_list.append(out_tensor)
 
         if self.weights_path is not None:
@@ -228,12 +228,17 @@ class YoloV2:
             if remaining_bytes != 0:
                 total_bytes = remaining_bytes + byte_count
                 raise ValueError('File error found  %i but use %i ' % (total_bytes, byte_count))
+            else:
+                print('Successful read {} bytes'.format(byte_count))
             self.weights_file.close()
 
         return out_tensor
 
-    def _print_net(self, key, out_size):
-        sentence = key + ': ' + json.dumps(self.net_config[key])
-        out_size[0] = '?'
-        sentence += ' out size: ' + json.dumps(out_size)
-        print(sentence)
+    def _print_net(self, item, out_size):
+        if self.speak_net:
+            key = list(item.keys())[0]
+            values = item[key]
+            sentence = key + ': ' + json.dumps(values)
+            out_size[0] = '?'
+            sentence += ' out size: ' + json.dumps(out_size)
+            print(sentence)
