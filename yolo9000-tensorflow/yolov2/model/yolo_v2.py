@@ -186,6 +186,7 @@ class YoloV2:
 
         self.net_config = net_config
         self.out_tensor_list = []
+        self.feature_extraction_opt = None
 
     def inference(self, input_tensor):
         out_tensor = None
@@ -193,7 +194,7 @@ class YoloV2:
         byte_count = 0
         if self.weights_file is not None:
             byte_count = self.byte_count
-        for item in self.net_config:
+        for i, item in enumerate(self.net_config):
             key = list(item.keys())[0]
             layer_block_values = item[key]
             if 'input' == key:
@@ -219,6 +220,8 @@ class YoloV2:
             else:
                 raise ValueError('No such layer')
             input_tensor = out_tensor
+            if i == len(self.net_config) - 2:
+                self.feature_extraction_opt = out_tensor
 
             self._print_net(item, out_tensor.get_shape().as_list())
             self.out_tensor_list.append(out_tensor)
@@ -233,6 +236,9 @@ class YoloV2:
             self.weights_file.close()
 
         return out_tensor
+
+    def get_fe_opt(self):
+        return self.feature_extraction_opt
 
     def _print_net(self, item, out_size):
         if self.speak_net:

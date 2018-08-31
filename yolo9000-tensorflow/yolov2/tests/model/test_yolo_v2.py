@@ -34,11 +34,14 @@ class MyTestCase(unittest.TestCase):
         with tf.Graph().as_default():
             input_tensor = tf.placeholder(dtype=tf.float32, shape=[None, 608, 608, 3])
             infer_op = yolov2.inference(input_tensor)
+            fe_op = yolov2.get_fe_opt()
             init = tf.global_variables_initializer()
             with tf.Session() as sess:
                 sess.run(init)
                 res = sess.run(infer_op, feed_dict={input_tensor: test_input})
+                feature = sess.run(fe_op, feed_dict={input_tensor: test_input})
 
+        self.assertEqual([1, 19, 19, 1024], list(feature.shape))
         self.assertEqual([1, 19, 19, 425], list(res.shape))
 
 
